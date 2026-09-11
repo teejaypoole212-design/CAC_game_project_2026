@@ -1,0 +1,104 @@
+#pragma once
+
+#include <raylib.h>
+#include <torch/torch.h>
+
+#include "ai.h"
+#include "collision.h"
+#include "combat.h"
+
+#include <string>
+#include <vector>
+
+class ai_combat_system;
+using AI = ai_combat_system;
+
+enum class Shape {circle, rect, triangle};
+enum class WeaponState {sword_idle, sword_swinging, sheathing};
+
+class Player {
+private:
+
+Vector2 pos = {1860.0f, 540.0f};
+Vector2 last_pos = {0.0f,0.0f}; //place holder 
+
+//stats
+int health = 100; // the 1's in spd and dmg are the level of stat
+int speed = 1;
+int damage = 1;
+int max_health = 100;
+//======
+collision_mask hitbox;
+
+int ranged_projectile_count = 0;
+
+std::string name;
+Shape shape;
+Color color; //allows the player to customize their characters looks
+
+bool is_attacking = false;
+bool is_grounded = true;
+
+// --- weapon/attack state ---
+WeaponState weapon_state = WeaponState::sword_idle;
+float weapon_timer = 0.0f;
+const float sheathe_delay = 0.25f; // time to put the sword away before an arrow actually fires
+float facing_angle = 0.0f;         // radians, aimed at the mouse every frame
+
+meele_attack sword;
+std::vector<ranged_attack> arrows;
+
+protected:
+
+public:
+
+Player(std::string n, Shape shp, Color clr);
+
+//setters
+void set_name(std::string new_name) {name = new_name;}
+void set_color(Color new_color) {color = new_color;}
+void set_shape(Shape new_shape) {shape = new_shape;}
+void set_position(Vector2 new_pos) {pos = new_pos;}
+
+
+void level_up_health(int a) {health += a; max_health += a;}
+void level_up_speed(int a ) {speed += a;}
+void level_up_damage(int a) {damage += a;}
+
+void take_damage(int amount) {health -= amount;}
+void add_projectile(int a) {ranged_projectile_count += a;} 
+//getters
+int get_health() const {return health;}
+int get_speed() const {return speed;}
+int get_damage() const {return damage;}
+std::string get_name() const {return name;}
+Shape get_shape() const {return shape;}
+Color get_color() const {return color;}
+int get_ranged_amount() const {return ranged_projectile_count;}
+int get_max_health() const {return max_health;}
+Vector2 get_pos() const {return pos;}
+Vector2 get_position() const {return pos;}
+Vector2 get_last_pos() const {return last_pos;}
+const collision_mask& get_hitbox() const { return hitbox; }
+
+//misc funcs
+
+void move(float dt);
+void update(float dt);
+void draw();
+void attack_meele(); //paramaters unkown for now
+void attack_ranged(); //paramaters unkown for now
+
+//bool check_collisions(/*target against player*/);
+bool check_is_alive() {if(health > 0) {return true;}else{return false;}}
+
+float get_body_extent() const {
+switch (shape) {
+case Shape::circle:   return 20.0f;
+case Shape::rect:     return 28.5f; // ~half-diagonal of the 40x40 square, so corners are covered too
+case Shape::triangle: return 25.0f;
+    }
+return 20.0f;
+}
+
+};
