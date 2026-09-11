@@ -1,0 +1,22 @@
+# Compiled object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+game
+a.out
+
+# Build folders
+build/
+bin/
+obj/
+
+# IDE / editor files
+.vscode/
+.idea/
+*.code-workspace
+
+# Dependency / package files (optional)
+*.d
