@@ -2,6 +2,8 @@
 *.o
 *.obj
 
+*.csv
+
 # Executables
 *.exe
 *.out

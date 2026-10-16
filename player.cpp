@@ -38,15 +38,23 @@ pos.x += dir_x * speed * dt;
 pos.y += dir_y * speed * dt;
 }
 
-void Player::attack_meele() {
+void Player::attack_meele(Game &game, float aim_angle) {
+    if (meele_cooldown_current >= meele_cooldown_max) {
     if (weapon_state != WeaponState::sword_idle) return;
 
     sword.set_owner_body_extent(get_body_extent()); // in case shape changed since construction
     sword.initilize(pos, facing_angle);
     weapon_state = WeaponState::sword_swinging;
     is_attacking = true;
+
+    auto swing = std::make_unique<meele_attack>(10, 5, 60, YELLOW, DARKBROWN);
+    swing->initilize(pos, aim_angle);
+    game.spawn_player_attack(std::move(swing));
+    meele_cooldown_current = 0.0f;
+    std::cout << meele_cooldown_current << "current     " << meele_cooldown_max << "    max, should occure" << std::endl;
+    }
 }
-void Player::attack_ranged() {
+void Player::attack_ranged(Game &game, float aim_angle) { //honestly dont need cool down on ranged, the player wont have too many arrows any ways
     if (weapon_state != WeaponState::sword_idle) return;
     if (ranged_projectile_count <= 0) return;
 
@@ -54,6 +62,12 @@ void Player::attack_ranged() {
     weapon_state = WeaponState::sheathing;
     weapon_timer = sheathe_delay;
     is_attacking = true;
+
+
+    auto arrow = std::make_unique<ranged_attack>(10, 400, SKYBLUE);
+    arrow->initilize(pos, aim_angle);
+    game.spawn_player_attack(std::move(arrow));
+
 }
 
 //checks
@@ -67,6 +81,9 @@ void Player::update(float dt) {
 last_pos = pos;
 hitbox.set_position(pos);
 this->move(dt); 
+
+meele_cooldown_current += dt;
+
 
     Vector2 mouse = GetMousePosition();
     facing_angle = atan2f(mouse.y - pos.y, mouse.x - pos.x);

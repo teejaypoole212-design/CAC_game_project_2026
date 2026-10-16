@@ -1,31 +1,75 @@
 #include "game.h"
 #include <raylib.h>
+#include <raymath.h>
+#include "arrow_handler.h"
+
+
+#include <algorithm>
+#include <cmath>
+#include <unordered_set>
 
 // Keep this single global tracker if shared with other systems
-int current_step = 0; 
 
-// line 141 — the new one you added for logging
+// main.cpp flips this (Q = fast training, B = toggle). When on, a scripted sparring partner
+// pilots the Player so the AI has an opponent that fights back.
+bool g_sparring_enabled = false;
+static sparring_bot g_sparring;
+
+namespace {
+
+// A melee swing stays alive for ~0.2 s: make sure it only damages once.
+std::unordered_set<const base_attack*> g_already_hit;
+
+// Both directions of combat damage in one place. Arrows are consumed on hit.
+void resolve_damage(attack_list& player_attacks, attack_list& ai_attacks, Player& player, ai_combat_system& ai) {
+    for (auto& up : player_attacks) {                               // player -> AI
+        base_attack* a = up.get();
+        if (!a->is_Alive() || g_already_hit.count(a)) continue;
+        if (!a->get_hitbox().check_collision(ai.get_hitbox())) continue;
+        ai.take_damage((int)a->get_damage());                       // the AI learns from this automatically
+        if (dynamic_cast<ranged_attack*>(a)) a->kill(); else g_already_hit.insert(a);
+    }
+    for (auto& up : ai_attacks) {                                   // AI -> player
+        base_attack* a = up.get();
+        if (!a->is_Alive() || g_already_hit.count(a)) continue;
+        if (!a->get_hitbox().check_collision(player.get_hitbox())) continue;
+        const int dmg = (int)a->get_damage();
+        const bool melee = dynamic_cast<meele_attack*>(a) != nullptr;
+        player.take_damage(dmg);
+        ai.on_hit_player(dmg, melee);
+        if (melee) g_already_hit.insert(a); else a->kill();
+    }
+    // forget swings that no longer exist (heap addresses get reused)
+    for (auto it = g_already_hit.begin(); it != g_already_hit.end();) {
+        bool alive = false;
+        for (auto& up : player_attacks) if (up.get() == *it) { alive = true; break; }
+        if (!alive) for (auto& up : ai_attacks) if (up.get() == *it) { alive = true; break; }
+        it = alive ? std::next(it) : g_already_hit.erase(it);
+    }
+}
+
+} // namespace
+
 Game::Game() : game_ui(game_ui_state::START_MENU), fx_system(5000) {
-    log_file.open("training_log.csv", std::ios::app);
-    log_file << "round,total_reward,episode_length,final_distance,epsilon\n";
+    // new file name: the columns changed, so don't mix with the old training_log.csv
+    log_file.open("training_log_v2.csv", std::ios::app);
+    log_file.seekp(0, std::ios::end);
+    if (log_file.tellp() == std::streampos(0)) {
+        log_file << "round,total_reward,episode_length,final_distance,epsilon,"
+                    "outcome,ai_hp,player_hp,damage_dealt,damage_taken,decisions,avg_loss,opponent\n";
+    }
 }
 
 void Game::initilize(bool &still_in_menu, Player &player) {
     // Left intact per your configuration
 }
 
-
-void Game::check_and_handle_auto_reset(Player &player, ai_combat_system &ai, int &current_step) {
+void Game::check_and_handle_auto_reset(Player &player, ai_combat_system &ai, arrow_handler &arrow, int &current_step) {
     bool had_lost = false;
     int dummy_round = 0;
-
-   
     if (!this->round_on_going(dummy_round, player, ai, had_lost)) {
-        
-        
-        this->end_round(player, ai); 
-        
-        current_step = 0; 
+        this->end_round(player, ai, arrow);
+        current_step = 0;
     }
 }
 
@@ -43,172 +87,106 @@ void Game::draw_attacks() {
     for (auto& a : ai_attacks)     if (a->is_Alive()) a->draw(a->get_pos());
 }
 
-
+// Pure query now (it used to fire reward events as a side effect, which double-counted the ending).
 bool Game::round_on_going(int &round_count, Player &player, ai_combat_system &ai, bool &had_lost) {
-    if (ai.get_hp() <= 0 || !player.check_is_alive()) {
-        if (ai.get_hp() <= 0 && player.check_is_alive()) {
-            ai.on_ai_death(); 
-            had_lost = false; 
-        } 
-        else if (!player.check_is_alive() && ai.get_hp() > 0) {
-            ai.on_ai_win();   
-            had_lost = true;  
-        }
-        return false; 
+    (void)round_count;
+    const bool ai_dead = ai.get_hp() <= 0;
+    const bool player_dead = !player.check_is_alive();
+    if (ai_dead || player_dead) {
+        if (ai_dead && !player_dead) had_lost = false;
+        else if (player_dead && !ai_dead) had_lost = true;
+        return false;
     }
-    return true; 
+    return true;
 }
 
-
-void Game::update(float dt, Player &player, ai_combat_system &ai) {
+void Game::update(float dt, Player &player, ai_combat_system &ai, arrow_handler &arrow, bool round_on) {
+    (void)round_on;
     fx_system.update(dt);
     current_step++;
 
-    ai.tick_cooldowns(dt);
-
-
-if (ai.get_hitbox().check_collision(player.get_hitbox())) {
-    end_round(player,ai); //debug for now to allow for automated ai training
-}
-
-
-
-
-    Vector2 live_ai_pos = ai.get_position(); 
-    Vector2 old_ai_pos = live_ai_pos; 
-
-    torch::Tensor current_state;
-    {
-        torch::NoGradGuard no_grad;
-        current_state = ai.generate_ai_state_tensor(player, current_step);
+    // 1. optional scripted opponent (training)
+    static bool bot_was_on = false;
+    if (g_sparring_enabled && !bot_was_on) g_sparring.begin_episode(player);
+    bot_was_on = g_sparring_enabled;
+    if (g_sparring_enabled) {
+        g_sparring.update(dt, player, ai, ai_attacks,
+                          [this](std::unique_ptr<base_attack> a) { spawn_player_attack(std::move(a)); });
     }
 
-    int64_t chosen_action = ai.choose_action(current_state);
+    // 2. the AI: perceive -> (re)decide -> run its state -> move -> attack
+    ai.update(dt, player, player_attacks,
+              [this](std::unique_ptr<base_attack> a) { spawn_ai_attack(std::move(a)); });
 
-// action -> behavior mapping. keeping speed-based melee/ranged untouched,
-// but the movement actions now dispatch to the high-level AI states
-// instead of raw single-axis moves.
-    constexpr int BEHAVIOR_STEP_DURATION = 45; // ~0.75s at 60fps, tune to taste
-
-    static int64_t previous_action = -1; // tracks the last action picked, so
-                                          // phase-based states don't get a
-                                          // corrupted timer when the action changes
-    if (chosen_action != previous_action) {
-        ai.reset_behavior_timer();
-        previous_action = chosen_action;
-    }
-
-    switch (chosen_action) {
-        case 0: ai.move_tords_player(player, BEHAVIOR_STEP_DURATION);     break;
-        case 1: ai.run_away_from_player(player, BEHAVIOR_STEP_DURATION);  break;
-        case 2: ai.go_to_pickup_arrow();                                  break;
-        case 3: ai.move_behind_cover();                                   break;
-        case 4: ai.bait_player_attack(player, BEHAVIOR_STEP_DURATION);    break;
-        case 5: ai.strafe_around_player(player, BEHAVIOR_STEP_DURATION);  break;
-        case 6: ai.zig_zag_to_player(player, BEHAVIOR_STEP_DURATION);     break;
-        case 7: ai.fake_run_away(player, BEHAVIOR_STEP_DURATION);         break;
-
-        case 8: { // MELEE SWING
-            if (ai.can_attack()) {
-                ai.reset_attack_cooldown();
-                float facing_angle = atan2f(player.get_pos().y - live_ai_pos.y, player.get_pos().x - live_ai_pos.x);
-                auto melee = std::make_unique<meele_attack>(15.0, 0.0, 60.0, MAROON, RED);
-                melee->initilize(live_ai_pos, facing_angle);
-                this->spawn_ai_attack(std::move(melee));
-            }
-            break;
-        }
-        case 9: { // RANGED PROJECTILE
-            if (ai.get_arrow_count() > 0 && ai.can_attack()) {
-                ai.reset_attack_cooldown();
-                float facing_angle = atan2f(player.get_pos().y - live_ai_pos.y, player.get_pos().x - live_ai_pos.x);
-                auto arrow = std::make_unique<ranged_attack>(10.0, 450.0, PURPLE);
-                arrow->initilize(live_ai_pos, facing_angle);
-                this->spawn_ai_attack(std::move(arrow));
-            }
-            break;
-        }
-    }
-
-    // movement states (0,1,4,5,6,7) mutate ai's internal position directly via
-    // change_position_x/y, not live_ai_pos - resync so the rest of this frame
-    // (state tensor, collision, attack spawn positions) stays consistent
-    if (chosen_action >= 0 && chosen_action <= 7) {
-        live_ai_pos = ai.get_position();
-    }
-
-    player.update(dt); 
-// temp note out for now plan to revamp this system anyways
-    //ai.change_position_x(live_ai_pos.x - old_ai_pos.x);
-    //ai.change_position_y(live_ai_pos.y - old_ai_pos.y);
-
+    // 3. world
+    player.update(dt);
     update_attacks(dt, player.get_pos(), ai.get_position());
+    resolve_damage(player_attacks, ai_attacks, player, ai);
 
-    bool is_done = (ai.get_hp() <= 0 || !player.check_is_alive());
-
-    // Damage processing blocks remain the same...
-    for (auto& atk : player_attacks) { /* ... */ }
-    for (auto& atk : ai_attacks) { /* ... */ }
-
-    torch::Tensor next_state;
-    {
-        torch::NoGradGuard no_grad;
-        next_state = ai.generate_ai_state_tensor(player, current_step);
+    // 4. round over?
+    if (ai.get_hp() <= 0 || !player.check_is_alive() || ai.episode_timed_out()) {
+        this->end_round(player, ai, arrow);
+        current_step = 0;
+        return;
     }
 
-    float frame_reward = ai.process_and_record_frame(current_state, chosen_action, next_state, live_ai_pos, player.get_pos(), is_done);
-    episode_reward_total += frame_reward;
-    episode_length++;
+    // 5. arrows (your arrow_handler calls ai.report_arrow / add_arrow / on_arrow_pickup)
+    arrow.during_round(player, ai);
+}
 
-    is_done = (ai.get_hp() <= 0 || !player.check_is_alive());
+void Game::end_round(Player &player, ai_combat_system &ai, arrow_handler &arrow_hand) {
+    // the very first call (from main, before the loop) is only a reset: nothing to score or log
+    if (ai.get_episode_ticks() > 0) {
+        round_number++;
+        episode_outcome outcome = episode_outcome::TIMEOUT;
+        if (ai.get_hp() <= 0) outcome = episode_outcome::AI_LOST;
+        else if (!player.check_is_alive()) outcome = episode_outcome::AI_WON;
+        ai.end_episode(outcome);
 
-    if (is_done) {
-        current_step = 0; 
-        this->end_round(player, ai);
+        const char* label = outcome == episode_outcome::AI_WON ? "win" : outcome == episode_outcome::AI_LOST ? "loss" : "timeout";
+        log_file << round_number << "," << ai.get_episode_return() << "," << ai.get_episode_ticks() << ","
+                 << Vector2Distance(ai.get_position(), player.get_pos()) << "," << ai.get_epsilon() << ","
+                 << label << "," << ai.get_hp() << "," << player.get_health() << ","
+                 << ai.get_episode_damage_dealt() << "," << ai.get_episode_damage_taken() << ","
+                 << ai.get_episode_decisions() << "," << ai.get_average_loss() << ","
+                 << (g_sparring_enabled ? g_sparring.name() : "human") << "\n";
+        log_file.flush();
+
+        ai.train_on_history();
     }
-    check_and_handle_auto_reset(player, ai, current_step);
+
+    arrow_hand.end_round();
+
+    // spawn points: fixed for human play, randomised while sparring so the AI sees every geometry
+    Vector2 ai_start = {60.0f, 540.0f};
+    Vector2 player_start = {1860.0f, 540.0f};
+    if (g_sparring_enabled) {
+        ai_start = {(float)GetRandomValue(80, 500), (float)GetRandomValue(80, 1000)};
+        if (GetRandomValue(0, 99) < 40) {                                   // 40%: start in a brawl
+            const float ang = (float)GetRandomValue(0, 628) / 100.0f;
+            const float d = (float)GetRandomValue(160, 520);
+            player_start = {Clamp(ai_start.x + std::cos(ang) * d, 40.0f, 1880.0f),
+                            Clamp(ai_start.y + std::sin(ang) * d, 40.0f, 1040.0f)};
+        } else {
+            player_start = {(float)GetRandomValue(1400, 1840), (float)GetRandomValue(80, 1000)};
+        }
+    }
+
+    ai.reset_episode(ai_start);                                             // also restores the AI's hp
+    player.take_damage(player.get_health() - player.get_max_health());     // negative damage = refill to max
+    player.set_position(player_start);
+    player_attacks.clear();                                                 // no stray swings/arrows into the new round
+    ai_attacks.clear();
+    g_already_hit.clear();
+    if (g_sparring_enabled) g_sparring.begin_episode(player);
 }
-
-
-void Game::end_round(Player &player, ai_combat_system &ai) {
-    
-    round_number++;
-    float final_dist = Vector2Distance(ai.get_position(), player.get_pos());
-    log_file << round_number << "," << episode_reward_total << "," << episode_length << "," 
-              << final_dist << "," << ai.get_epsilon() << "\n";
-    log_file.flush();
-
-    episode_reward_total = 0.0f;
-    episode_length = 0;
-
-
-    ai.train_on_history();
-
-    float x = 60.0f;
-    float y = 540.0f;
-    
-    Vector2 ai_start_pos = {x, y};
-
-    ai.reset_hp();
-    ai.reset_episode(ai_start_pos);
-
-    // Reset player back to standard configurations
-    //player.set_position({1860.0f, 540.0f}); for now let player stay...
-    float newposx = GetRandomValue(100,1760);
-    float newposy = GetRandomValue(50,490);
-    player.set_position({newposx,newposy});
-    //player.update(); 
-}
-
-
 
 void Game::draw(Player &player, ai_combat_system &ai) {
-player.draw();
-ai.draw();
-fx_system.draw();
-draw_attacks(); 
+    player.draw();
+    ai.draw();
+    fx_system.draw();
+    draw_attacks();
 }
-
 
 void Game::spawn_player_attack(std::unique_ptr<base_attack> attack) {
     player_attacks.push_back(std::move(attack));

@@ -4,12 +4,16 @@
 #include "ai.h"
 #include "particle.h"
 #include "combat.h"
+//#include "arrow_handler.h"
+
 
 #include <iostream>
 #include <vector>
 #include <string>
 #include <fstream>
 
+
+class arrow_handler; //foward dec to fix the dumb error :(
 
 enum class game_ui_state {START_MENU, IN_GAME, DEATH_MENU};
 enum class attack_owner { PLAYER, AI };
@@ -25,6 +29,8 @@ game_ui_state game_ui;
 particle_system fx_system;
 std::ofstream log_file;
 
+int current_step = 0;
+
 float episode_reward_total = 0.0f;
 int episode_length = 0;
 int round_number = 0;
@@ -35,17 +41,20 @@ public:
 
 Game();
 
+int get_current_step() const {return current_step;}
+void change_current_step(int a) {current_step += a;}
+void set_current_step(int set) {current_step = set;}
 
-void check_and_handle_auto_reset(Player &player, ai_combat_system &ai, int &current_step);
+void check_and_handle_auto_reset(Player &player, ai_combat_system &ai,arrow_handler &arrow, int &current_step);
 //^ debug
 
 void initilize(bool &still_in_menu, Player &player); //start up menu
 
-void update(float dt,Player &player, ai_combat_system &ai); //logic update
+void update(float dt,Player &player, ai_combat_system &ai, arrow_handler &arrow, bool round_on); //logic update
 void draw(Player &player, ai_combat_system &ai); //update sprites
 
 bool round_on_going(int &round_count, Player &player, ai_combat_system &ai, bool &had_lost); //round on going handels round and when it ends so it can run end_round with a if statement
-void end_round(Player &player,  ai_combat_system &ai); //allows the player to upgrade their stats/upgrade abilities and lets the ai learn off of last round
+void end_round(Player &player,  ai_combat_system &ai, arrow_handler &arrow_hand); //allows the player to upgrade their stats/upgrade abilities and lets the ai learn off of last round
 
 
 void change_ui_state(game_ui_state new_state) {game_ui = new_state;}

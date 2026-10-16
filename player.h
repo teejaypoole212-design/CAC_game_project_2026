@@ -4,12 +4,14 @@
 #include <torch/torch.h>
 
 #include "ai.h"
+#include "game.h"
 #include "collision.h"
 #include "combat.h"
 
 #include <string>
 #include <vector>
 
+class Game;
 class ai_combat_system;
 using AI = ai_combat_system;
 
@@ -44,6 +46,9 @@ WeaponState weapon_state = WeaponState::sword_idle;
 float weapon_timer = 0.0f;
 const float sheathe_delay = 0.25f; // time to put the sword away before an arrow actually fires
 float facing_angle = 0.0f;         // radians, aimed at the mouse every frame
+
+float meele_cooldown_current = 0.0f;
+float meele_cooldown_max = 0.75f;
 
 meele_attack sword;
 std::vector<ranged_attack> arrows;
@@ -81,13 +86,19 @@ Vector2 get_position() const {return pos;}
 Vector2 get_last_pos() const {return last_pos;}
 const collision_mask& get_hitbox() const { return hitbox; }
 
+
+
+
+float get_meele_cooldown_current() {return meele_cooldown_current;}
+float get_meele_cooldown_max() const {return meele_cooldown_max;}
+
 //misc funcs
 
 void move(float dt);
 void update(float dt);
 void draw();
-void attack_meele(); //paramaters unkown for now
-void attack_ranged(); //paramaters unkown for now
+void attack_meele(Game &game, float aim_angle); //paramaters unkown for now (i know now :) )
+void attack_ranged(Game &game, float aim_angle); //paramaters unkown for now
 
 //bool check_collisions(/*target against player*/);
 bool check_is_alive() {if(health > 0) {return true;}else{return false;}}

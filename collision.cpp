@@ -5,7 +5,7 @@
 #include <limits>
 
 // =========================================================================
-// Factory constructors
+// constructors
 // =========================================================================
 
 collision_mask collision_mask::make_circle(Vector2 pos, float r) {
