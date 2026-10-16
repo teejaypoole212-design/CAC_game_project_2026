@@ -7,6 +7,7 @@
 #include "game.h"
 #include "collision.h"
 #include "combat.h"
+#include "types.h"
 
 #include <string>
 #include <vector>
@@ -15,7 +16,7 @@ class Game;
 class ai_combat_system;
 using AI = ai_combat_system;
 
-enum class Shape {circle, rect, triangle};
+
 enum class WeaponState {sword_idle, sword_swinging, sheathing};
 
 class Player {

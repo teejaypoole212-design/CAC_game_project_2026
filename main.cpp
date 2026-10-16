@@ -18,6 +18,12 @@
 extern bool debug;
 extern bool g_sparring_enabled;   // in game.cpp
 
+//for player set up
+std::string player_name;
+Color player_color;
+Shape player_shape;
+int player_step = 0;
+
 volatile std::sig_atomic_t g_shutdown_requested = 0;
 void handle_sigint(int) { g_shutdown_requested = 1; }
 
@@ -36,6 +42,7 @@ const char* const MODEL_PATH = "model.pt";       // new name: the old 10-action 
 }
 
 int main() {
+    game.change_ui_state(game_ui_state::START_MENU); //temp for testing 
     std::signal(SIGINT, handle_sigint);
     srand(static_cast<unsigned>(time(nullptr)));
 
@@ -83,7 +90,8 @@ int main() {
             const double t0 = GetTime();
             int n = 0;
             while (n < MAX_TRAIN_STEPS_PER_FRAME) {
-                game.update(FIXED_DT, player, ai, arrow_han, true);
+                game.update(FIXED_DT, player, ai, arrow_han, true,
+                    player_name, player_color, player_shape, player_step);
                 ++n;
                 if ((n & 15) == 0 && (GetTime() - t0) * 1000.0 >= TRAIN_BUDGET_MS) break;
             }
@@ -93,18 +101,20 @@ int main() {
             accumulator += (float)std::min(frame_real, 0.1);
             steps_last_frame = 0;
             while (accumulator >= FIXED_DT) {
-                game.update(FIXED_DT, player, ai, arrow_han, true);
+                game.update(FIXED_DT, player, ai, arrow_han, true, player_name,player_color,player_shape,player_step);
                 accumulator -= FIXED_DT;
                 ++steps_last_frame;
             }
         }
-
+        player.set_color(player_color);
+        player.set_shape(player_shape);
+        player.set_name(player_name);
         if (GetTime() - last_save >= AUTOSAVE_SECONDS) { ai.save_model(MODEL_PATH); last_save = GetTime(); }
         if (TRAIN_TIME_LIMIT_MINUTES > 0.0 && training_seconds >= TRAIN_TIME_LIMIT_MINUTES * 60.0) break;
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        game.draw(player, ai);
+        game.draw(player,ai,arrow_han, player_name,player_color,player_shape,player_step);
         if (debug) {
         DrawText(TextFormat("AI HP: %d   state: %s", ai.get_hp(), ai.get_state_name()), 10, 10, 20, BLACK);
         DrawText(TextFormat("eps %.3f   loss %.4f   replay %d   decisions %lld", ai.get_epsilon(),

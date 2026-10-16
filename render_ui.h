@@ -1,19 +1,19 @@
 #pragma once
-
-#include "player.h"
+#include <string>
+#include <raylib.h>
+#include "player.h"          // Player, Shape
+#include "ai.h"              // ai_combat_system
 #include "arrow_handler.h"
-#include "ai.h"
-#include "particle.h"
-#include "game.h"
+#include "types.h"
 
-void render_start_menu(); 
-void update_start_menu();
+class Game;                  // forward declaration is enough for references
 
-void render_main_game();
-void update_main_game(float dt, Player &player, ai_combat_system &ai, arrow_handler &arrow, particle_system fx_system,Game game,attack_list& ai_attacks, bool round_on);
-
+void render_start_menu();
+void update_start_menu(Game& game);                     // <-- note the &
+void render_setup_menu(std::string& name, Color& color, Shape& shape, int& step);
+void update_setup_menu(std::string& name, Color& color, Shape& shape, int& step, Game &game);
+void render_main_game(Game& game, Player& player, ai_combat_system& ai, arrow_handler& arrow);
+void update_main_game(float dt, Game& game, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on = true);
 void render_after_round();
 void update_after_round();
-
 void render_end_menu();
-

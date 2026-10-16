@@ -113,25 +113,70 @@ meele_cooldown_current += dt;
                  arrows.end());
 }
 
-void Player::draw() {
-if (this->check_is_alive()) {
-if (shape == Shape::circle) {
-DrawCircleV(pos, 20.0f, color);
-        } 
-else if (shape == Shape::rect) {
-DrawRectangle(static_cast<int>(pos.x) - 20, static_cast<int>(pos.y) - 20, 40, 40, color);
-        } 
-else if (shape == Shape::triangle) {
-Vector2 v1 = { pos.x, pos.y - 25.0f };
-Vector2 v2 = { pos.x - 20.0f, pos.y + 15.0f };
-Vector2 v3 = { pos.x + 20.0f, pos.y + 15.0f };
-DrawTriangle(v1, v2, v3, color);
-        }
-    }
+void Player::draw()
+{
+    if (!this->check_is_alive()) return;
 
+    if (shape == Shape::circle) {
+        // border
+        DrawCircleV(pos, 22.0f, BLACK);
+        // fill
+        DrawCircleV(pos, 20.0f, color);
+    }
+    else if (shape == Shape::rect) {
+        // border
+        DrawRectangle(static_cast<int>(pos.x) - 22, static_cast<int>(pos.y) - 22, 44, 44, BLACK);
+        // fill
+        DrawRectangle(static_cast<int>(pos.x) - 20, static_cast<int>(pos.y) - 20, 40, 40, color);
+    }
+    else if (shape == Shape::triangle) {
+        // border larger
+        Vector2 b1 = { pos.x,         pos.y - 28.0f };
+        Vector2 b2 = { pos.x - 23.0f, pos.y + 17.0f };
+        Vector2 b3 = { pos.x + 23.0f, pos.y + 17.0f };
+        DrawTriangle(b1, b2, b3, BLACK);
+
+        // fill
+        Vector2 v1 = { pos.x,         pos.y - 25.0f };
+        Vector2 v2 = { pos.x - 20.0f, pos.y + 15.0f };
+        Vector2 v3 = { pos.x + 20.0f, pos.y + 15.0f };
+        DrawTriangle(v1, v2, v3, color);
+    }
+    // ----- health bar -----
+    const float bar_width  = 60.0f;
+    const float bar_height = 8.0f;
+    const float bar_x = pos.x - bar_width * 0.5f;
+    const float bar_y = pos.y - 40.0f;               // sits above the player
+
+    float hp_percent = (float)health / (float)max_health;
+    if (hp_percent < 0.0f) hp_percent = 0.0f;
+    if (hp_percent > 1.0f) hp_percent = 1.0f;
+
+    // background (dark)
+    DrawRectangle((int)bar_x, (int)bar_y, (int)bar_width, (int)bar_height, Color{30, 30, 30, 220});
+
+    // foreground (shrinks as HP drops)
+    Color hp_color;
+    if (hp_percent > 0.6f)      hp_color = Color{0, 220, 80, 255};   // green
+    else if (hp_percent > 0.3f) hp_color = Color{240, 200, 0, 255};  // yellow
+    else                        hp_color = Color{220, 40, 40, 255};  // red
+
+    DrawRectangle((int)bar_x, (int)bar_y, (int)(bar_width * hp_percent), (int)bar_height, hp_color);
+
+    // thin outline
+    DrawRectangleLines((int)bar_x, (int)bar_y, (int)bar_width, (int)bar_height, Color{200, 200, 200, 180});
+
+    // name above the bar
+    int name_width = MeasureText(name.c_str(), 16);
+    DrawText(name.c_str(),
+             (int)(pos.x - name_width * 0.5f),
+             (int)(bar_y - 18),
+             16, BLACK);
+
+    // ----- weapons -----
     if (weapon_state == WeaponState::sword_swinging) {
         sword.draw(pos);
-    } 
+    }
 
     for (auto& arrow : arrows) {
         arrow.draw(pos);
