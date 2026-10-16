@@ -16,3 +16,6 @@ This is an game built entirely in c++ that has you against a AI that will learn 
 ## Building
 ```bash
 make
+
+## Requirements
+Libtorch, raylib, c++ 20
