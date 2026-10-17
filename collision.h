@@ -1,12 +1,12 @@
 #pragma once
 
-#include <raylib.h>
+#include "pch.h"
 #include <array>
 #include <vector>
 
 // Supported collision shape types.
 enum class collision_shape_type {
-    CIRCLE,
+    CIRCLE, 
     RECT,
     TRIANGLE
 };

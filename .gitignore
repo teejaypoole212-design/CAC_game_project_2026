@@ -22,3 +22,10 @@ obj/
 
 # Dependency / package files (optional)
 *.d
+# Precompiled headers (can be hundreds of MB)
+*.gch
+pch.h.gch
+
+# Shared libraries
+*.so
+libraylib.so*.gch

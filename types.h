@@ -7,3 +7,5 @@ enum class Shape {
 };
 
 class arrow_handler;
+
+enum class upgrade_type {STANDARD,SPECIAL};

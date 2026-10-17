@@ -22,10 +22,10 @@ last_pos = pos;
 float dir_x = 0.0f;
 float dir_y = 0.0f;
 
-if (IsKeyDown(KEY_W)) dir_y -= 1.0f;
-if (IsKeyDown(KEY_S)) dir_y += 1.0f;
-if (IsKeyDown(KEY_A)) dir_x -= 1.0f;
-if (IsKeyDown(KEY_D)) dir_x += 1.0f;
+if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) dir_y -= 1.0f * speed;
+if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) dir_y += 1.0f * speed;
+if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) dir_x -= 1.0f * speed;
+if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) dir_x += 1.0f * speed;
 
 if (dir_x != 0.0f || dir_y != 0.0f) {
 float length = std::sqrt(dir_x * dir_x + dir_y * dir_y);
@@ -47,7 +47,7 @@ void Player::attack_meele(Game &game, float aim_angle) {
     weapon_state = WeaponState::sword_swinging;
     is_attacking = true;
 
-    auto swing = std::make_unique<meele_attack>(10, 5, 60, YELLOW, DARKBROWN);
+    auto swing = std::make_unique<meele_attack>(10 + damage, 5 , 60, YELLOW, DARKBROWN);
     swing->initilize(pos, aim_angle);
     game.spawn_player_attack(std::move(swing));
     meele_cooldown_current = 0.0f;
@@ -171,7 +171,7 @@ void Player::draw()
     DrawText(name.c_str(),
              (int)(pos.x - name_width * 0.5f),
              (int)(bar_y - 18),
-             16, BLACK);
+             16, BLACK); //idk wht it looks a little difrrent
 
     // ----- weapons -----
     if (weapon_state == WeaponState::sword_swinging) {

@@ -1,39 +1,8 @@
 #pragma once
 
-// ===========================================================================
-//  ai.h  -  combat AI
-// ===========================================================================
-//  HOW IT WORKS
-//    * 32 hand-written behaviour states (approach, strafe, dodge, bait, shoot...).
-//    * A Double + Dueling DQN picks WHICH state to run. The state drives the AI's
-//      body until it finishes (0.25 - 3 s, always at least one tick) or something
-//      important happens (hit, arrow incoming, wall bump) - then the network is asked
-//      again. Reward is summed over the whole state (semi-MDP), so learning works on
-//      "decisions", not on 60 Hz frames.
-//    * States that make no sense right now (shoot with 0 arrows, melee on cooldown,
-//      dodge with nothing incoming, retreat when already far...) are masked out.
-//    * Human-ish limits: ~0.2 s reaction time to hits / incoming arrows (set_reaction_time),
-//      aim noise (set_aim_noise_scale), finite acceleration, and it only uses what a player
-//      can see on screen (positions, health bars, arrows) - it never reads the player's inputs.
-//
-//  CALL THESE FROM YOUR OWN COLLISION CODE (all safe to call any time):
-//      ai.take_damage(n)               any damage to the AI (traps, arrows, ...) - it learns from it
-//      ai.on_hit_player(dmg, melee)    the AI's attack landed
-//      ai.on_wall_contact(normal)      the AI walked into a wall
-//      ai.on_trap_contact(penalty)     the AI stepped on a trap (also call take_damage for its damage)
-//      ai.set_obstacles({...})         walls: solid, steered around, and usable as cover
-//      ai.set_hazards({{pos, r}, ...}) traps: steered around
-//
-//  ADDING / CHANGING A STATE
-//    1. add one line to AI_STATE_LIST            (max 32 - the mask is a uint32_t)
-//    2. write  ai_combat_system::steer_cmd ai_combat_system::st_NAME()  in ai.cpp
-//    3. add its rule in compute_valid_mask()     (ai.cpp)
-//    4. delete model_v2.pt - the network's output size changed, so it must retrain
-//    (A state must never be legal when its own "finished" condition is already true.)
-// ===========================================================================
 
-#include <raylib.h>
-#include <torch/torch.h>
+
+#include "pch.h"
 
 #include "collision.h"
 #include "combat.h"
@@ -52,10 +21,7 @@ class Player;          // full definition is pulled in at the bottom of this fil
 extern bool debug;     // defined in ai.cpp
 extern float g_bot_skill_override;   // tests only: >= 0 fixes the sparring bot's skill (0 = sloppy .. 1 = sharp)
 
-// ---------------------------------------------------------------------------
-//  the 32 states            X(ID, "label", min_seconds, max_seconds, category)
-//  (max_seconds is a ceiling - states can finish early)
-// ---------------------------------------------------------------------------
+
 enum ai_category { CAT_APPROACH, CAT_RETREAT, CAT_LATERAL, CAT_MELEE,
                    CAT_RANGED, CAT_RESOURCE, CAT_TRICK, CAT_POSITION, CAT_COUNT };
 

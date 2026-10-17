@@ -1,7 +1,7 @@
 #pragma once
 
 #include "collision.h"
-#include "raylib.h"
+#include "pch.h"
 
 class base_attack {
 
@@ -91,4 +91,4 @@ public:
     void update(float dt, Vector2 player_pos) override;
 
     void initilize(Vector2 player_pos, float direction) override;
-};
+}; 

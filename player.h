@@ -1,7 +1,6 @@
 #pragma once
 
-#include <raylib.h>
-#include <torch/torch.h>
+#include "pch.h"
 
 #include "ai.h"
 #include "game.h"
@@ -28,8 +27,15 @@ Vector2 last_pos = {0.0f,0.0f}; //place holder
 //stats
 int health = 100; // the 1's in spd and dmg are the level of stat
 int speed = 1;
-int damage = 1;
+int damage = 0;
 int max_health = 100;
+float meele_speed = 0; // the amount of time taken off of cool down
+
+int health_mult = 0;
+int speed_mult = 0;
+int damage_mult = 0;
+int meele_speed_mult = 0;
+
 //======
 collision_mask hitbox;
 
@@ -66,10 +72,30 @@ void set_color(Color new_color) {color = new_color;}
 void set_shape(Shape new_shape) {shape = new_shape;}
 void set_position(Vector2 new_pos) {pos = new_pos;}
 
+void reset_mults() {
 
-void level_up_health(int a) {health += a; max_health += a;}
-void level_up_speed(int a ) {speed += a;}
-void level_up_damage(int a) {damage += a;}
+    health -= health_mult; //to remove previos buffs
+    speed -= speed_mult;
+    damage -= damage_mult;
+    meele_speed -= meele_speed_mult;
+
+    health_mult = 0;
+    speed_mult = 1;
+    damage_mult = 0;
+    meele_speed_mult = 0;
+}
+
+void apply_mults() {
+    health += health_mult;
+    speed += speed_mult;
+    damage += damage_mult;
+    meele_speed += meele_speed_mult;
+}
+
+void add_health_mult(int add) {health_mult += add;}
+void add_speed_mult(float add) {speed_mult += add;}
+void add_damage_mult(int add) {damage_mult += add;}
+void add_meele_speed_mult(float add) {speed_mult += add;}
 
 void take_damage(int amount) {health -= amount;}
 void add_projectile(int a) {ranged_projectile_count += a;} 

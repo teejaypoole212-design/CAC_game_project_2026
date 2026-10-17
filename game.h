@@ -15,7 +15,7 @@
 #include <memory>
 #include <unordered_set>
 
-enum class game_ui_state {START_MENU,SETUP_MENU, IN_GAME, DEATH_MENU};
+enum class game_ui_state {START_MENU,SETUP_MENU, IN_GAME, UPGRADE_MENU, DEATH_MENU};
 enum class attack_owner { PLAYER, AI };
 
 // main.cpp flips this (Q = fast training). While on, a scripted sparring partner pilots the Player.

@@ -1,10 +1,12 @@
 #include "render_ui.h"
 
-#include <raylib.h>
+#include "pch.h"
 
 #include <algorithm>
 #include <memory>
 
+extern bool in_game;
+ 
 namespace {
 
 // move every live attack; swings follow their owner, arrows fly on their own. Dead ones are removed.
@@ -188,7 +190,7 @@ void update_start_menu(Game &game)
 
     if (clicked && CheckCollisionPointRec(mouse, quitBtn))
     {
-
+        in_game = false;
     }
 }
 
@@ -277,6 +279,72 @@ void render_setup_menu(std::string& name, Color& color, Shape& shape, int& step)
         DrawRectangleRounded(doneBtn, 0.25f, 8, hover ? Color{0, 255, 180, 255} : Color{0, 160, 220, 200});
         DrawText("DONE", (int)doneBtn.x + 65, (int)doneBtn.y + 12, 28, BLACK);
     }
+
+
+    // ---------- TUTORIAL PAGES ----------
+    else if (step >= 3)
+    {
+        // Tutorial content box
+        Rectangle contentBox = {(float)(sw/2 - 340), 160, 680, 360};
+        DrawRectangleRounded(contentBox, 0.15f, 12, Color{15, 12, 30, 230});
+        DrawRectangleRoundedLines(contentBox, 0.15f, 12, Color{0, 200, 255, 180});
+
+        // Page indicator
+        char pageText[32];
+        snprintf(pageText, sizeof(pageText), "Page %d / 3", step - 2);
+        int pageW = MeasureText(pageText, 20);
+        DrawText(pageText, sw/2 - pageW/2, 130, 20, Color{150, 200, 255, 200});
+
+        // ========== EDIT THE TEXT BELOW ==========
+        // You can change these strings freely.
+        // Use \n for new lines.
+
+        const char* page1 =
+            "WELCOME TO SUPER AI COMBAT\n\n"
+            "This is a short tutorial to get you started.\n";
+
+        const char* page2 =
+            "CONTROLS\n\n"
+            "Movement:  WASD\n"
+            "Melee:     Left click\n"
+            "Ranged:    Right click (as long as you have arrows)";
+
+        const char* page3 =
+            "extra information\n\n"
+            "- The AI learns from every fight\n"
+            "- Collect arrows that spawn on the map\n"
+            "- you can get upgrades after each round\n"
+            "Good luck. Have fun!";
+
+        const char* currentText = page1;
+        if (step == 4) currentText = page2;
+        if (step == 5) currentText = page3;
+
+        // Draw the text (simple multi-line)
+        DrawText(currentText, (int)contentBox.x + 30, (int)contentBox.y + 30, 24, Color{220, 240, 255, 255});
+
+        // ========== END OF EDITABLE TEXT ==========
+
+        // Buttons
+        Rectangle backBtn  = {(float)(sw/2 - 260), 560, 180, 50};
+        Rectangle nextBtn  = {(float)(sw/2 + 80),  560, 180, 50};
+
+        bool backHover = CheckCollisionPointRec(GetMousePosition(), backBtn);
+        bool nextHover = CheckCollisionPointRec(GetMousePosition(), nextBtn);
+
+        // Back button (only show if not on first tutorial page)
+        if (step > 3) {
+            DrawRectangleRounded(backBtn, 0.25f, 8, backHover ? Color{255, 120, 80, 255} : Color{180, 80, 60, 200});
+            DrawText("BACK", (int)backBtn.x + 55, (int)backBtn.y + 12, 28, WHITE);
+        }
+
+        // Next / Finish button
+        const char* nextLabel = (step == 5) ? "START" : "NEXT";
+        Color nextColor = nextHover ? Color{0, 255, 180, 255} : Color{0, 160, 220, 200};
+        DrawRectangleRounded(nextBtn, 0.25f, 8, nextColor);
+        int labelW = MeasureText(nextLabel, 28);
+        DrawText(nextLabel, (int)(nextBtn.x + nextBtn.width/2 - labelW/2), (int)nextBtn.y + 12, 28, BLACK);
+    }
 }
 
 
@@ -344,7 +412,30 @@ void update_setup_menu(std::string& name, Color& color, Shape& shape, int& step,
         Rectangle doneBtn = {(float)(GetScreenWidth()/2 - 100), 500, 200, 50};
         if (click && CheckCollisionPointRec(mouse, doneBtn)) {
             step = 3;   // finished
-            game.change_ui_state(game_ui_state::IN_GAME);
+        }
+    }
+
+    // ---------- TUTORIAL ----------
+    else if (step >= 3)
+    {
+        Rectangle backBtn = {(float)(GetScreenWidth()/2 - 260), 560, 180, 50};
+        Rectangle nextBtn = {(float)(GetScreenWidth()/2 + 80),  560, 180, 50};
+
+        // Back
+        if (step > 3 && click && CheckCollisionPointRec(mouse, backBtn)) {
+            step--;
+        }
+
+        // Next / Start
+        if (click && CheckCollisionPointRec(mouse, nextBtn)) {
+            if (step < 5) {
+                step++;
+            }
+            else {
+                // finished tutorial → start the game
+                step = 0; // reset for next time (optional)
+                game.change_ui_state(game_ui_state::IN_GAME);
+            }
         }
     }
 }
@@ -390,6 +481,13 @@ void update_main_game(float dt, Game& game, Player& player, ai_combat_system& ai
     // 5. arrows (your arrow_handler calls ai.report_arrow / add_arrow / on_arrow_pickup)
     arrow.update_all(player, ai);
 }
+
+
+
+
+
+
+
 
 
 

@@ -1,6 +1,5 @@
 #include "game.h"
-#include <raylib.h>
-#include <raymath.h>
+#include "pch.h"
 
 #include <cmath>
 

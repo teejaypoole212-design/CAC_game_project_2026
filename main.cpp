@@ -5,8 +5,7 @@
 
 #include "arrow_handler.h"
 
-#include <raylib.h>
-#include <raymath.h>
+#include "pch.h"
 
 #include <algorithm>
 #include <cmath>
@@ -24,8 +23,7 @@ Color player_color;
 Shape player_shape;
 int player_step = 0;
 
-volatile std::sig_atomic_t g_shutdown_requested = 0;
-void handle_sigint(int) { g_shutdown_requested = 1; }
+bool in_game = true;
 
 arrow_handler arrow_han;
 Game game;
@@ -43,7 +41,6 @@ const char* const MODEL_PATH = "model.pt";       // new name: the old 10-action 
 
 int main() {
     game.change_ui_state(game_ui_state::START_MENU); //temp for testing 
-    std::signal(SIGINT, handle_sigint);
     srand(static_cast<unsigned>(time(nullptr)));
 
     player.set_position({1860.0f, 540.0f});
@@ -59,7 +56,7 @@ int main() {
     double training_seconds = 0.0;
     double last_save = GetTime();
 
-    while (!WindowShouldClose() && !g_shutdown_requested) {
+    while (!WindowShouldClose() && in_game) {
         const double frame_real = GetFrameTime();
 
         if (debug) {

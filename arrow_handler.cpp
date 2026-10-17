@@ -3,19 +3,48 @@
 
 //arrow
 void arrow::draw() {
-if (alive) {
-Vector2 v1 = {pos.x, pos.y};
-Vector2 v2 = {pos.x - 10, pos.y + 30};
-Vector2 v3 = {pos.x + 10, pos.y + 30};
-DrawTriangle(v1, v2, v3, BLUE);
-    }
+    if (!alive) return;
+
+    const float angle = (float)GetTime() * 0.25f + pos.x * 0.007f;   // + a small unique offset per arrow
+    const float c = cosf(angle), s = sinf(angle);
+
+
+    auto at = [&](float x, float y, float shift) -> Vector2 {
+        return { pos.x + shift + x * c - y * s, pos.y + shift + x * s + y * c };
+    };
+
+    auto tri = [](Vector2 a, Vector2 b, Vector2 d, Color col) {
+        const float cross = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
+        if (cross > 0.0f) std::swap(b, d);
+        DrawTriangle(a, b, d, col);
+    };
+
+    auto draw_arrow = [&](float shift, Color head, Color shaft, Color feather) {
+        // shaft
+        DrawLineEx(at(0, 14, shift), at(0, -5, shift), 3.0f, shaft);
+
+        // swept-back arrowhead (two triangles around a notch, so it is more than a plain triangle)
+        tri(at(0, -17, shift), at(-7.5f, -3, shift), at(0, -6.5f, shift), head);
+        tri(at(0, -17, shift), at(0, -6.5f, shift),   at(7.5f, -3, shift), head);
+
+        // feathers at the back (two pairs, swept outward)
+        DrawLineEx(at(0, 7,  shift), at(-4.5f, 12.5f, shift), 3.0f, feather);
+        DrawLineEx(at(0, 7,  shift), at( 4.5f, 12.5f, shift), 3.0f, feather);
+        DrawLineEx(at(0, 11, shift), at(-4.5f, 16.5f, shift), 3.0f, feather);
+        DrawLineEx(at(0, 11, shift), at( 4.5f, 16.5f, shift), 3.0f, feather);
+    };
+
+    const Color shadow = Fade(BLACK, 0.18f);
+    draw_arrow(3.0f, shadow, shadow, shadow);                 // soft drop shadow
+    draw_arrow(0.0f, BLUE, DARKBLUE, SKYBLUE);                // the arrow
 }
+
 
 void arrow::update(Player &player, ai_combat_system &ai) {
 
 if (!alive) return;
 
-ai.report_arrow(pos);          // NEW: lets the AI see where pickups are (it had no way to before)
+ai.report_arrow(pos);         
 
 hitbox.set_position(pos);
 
