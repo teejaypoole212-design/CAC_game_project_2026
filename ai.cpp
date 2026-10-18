@@ -245,7 +245,7 @@ bool ai_combat_system::can_attack() const    { return can_melee_now() || can_sho
 
 // Every damage source goes through here, so the AI learns from walls, traps, arrows...
 void ai_combat_system::take_damage(int amount,Vector2 knockback_pos) {
-    //apply_knockback(knockback_pos, 220.0f); i honestly feel like the knockback makes it to easy (ai isnt trained for it)
+    //apply_knockback(knockback_pos, 220.0f); i honestly feel like the knockback makes it to easy (ai isnt trained for it )
     flash_red(0.5f);
 
     if (amount <= 0) {                                   // negative = heal

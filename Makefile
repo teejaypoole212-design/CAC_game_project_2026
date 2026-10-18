@@ -1,8 +1,4 @@
-# ---------------------------------------------------------------
-# Makefile: raylib + libtorch game (fast incremental builds)
-# ---------------------------------------------------------------
 
-# System toolchain first (avoids the i686-elf ld shadowing problem)
 export PATH := /usr/bin:/bin:$(PATH)
 
 # Use all cores
@@ -22,10 +18,11 @@ endif
 
 TARGET   = ./game
 
+#any one who runs this on their system is going to need to update these paths
 RAYLIB_ROOT  = $(HOME)/raylib
 LIBTORCH_DIR = $(HOME)/libtorch/libtorch
 
-# Auto-locate libraylib anywhere under ~/raylib (prefers .so, then .a)
+
 RAYLIB_LIBFILE := $(firstword $(shell find $(RAYLIB_ROOT) \( -name 'libraylib.so' -o -name 'libraylib.so.*' -o -name 'libraylib.a' \) 2>/dev/null | sort))
 ifeq ($(RAYLIB_LIBFILE),)
   $(error No libraylib found under $(RAYLIB_ROOT). Check where you extracted raylib)
@@ -44,7 +41,7 @@ LDFLAGS  = -L$(LIBTORCH_DIR)/lib \
 TORCH_LIBS = -Wl,--no-as-needed -ltorch -ltorch_cpu -lc10 -Wl,--as-needed
 SYS_LIBS   = -lpthread -ldl -lX11 -lGL -lm -lrt \
              -lXrandr -lXinerama -lXcursor -lXrender -lXext -lXi
-# raylib linked by full path, so the exact filename doesn't matter
+
 LIBS       = $(TORCH_LIBS) $(RAYLIB_LIBFILE) $(SYS_LIBS)
 
 SRCS = $(sort $(filter-out pch.cpp,$(wildcard *.cpp)))
@@ -58,11 +55,9 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET) $(LDFUSE) $(LDFLAGS) $(LIBS)
 
-# Precompiled header: torch + raylib parsed once
 $(PCH): pch.h
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -x c++-header pch.h -o $(PCH)
 
-# -include pch.h makes gcc silently use pch.h.gch for every file
 %.o: %.cpp | $(PCH)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -include pch.h -c $< -o $@
 

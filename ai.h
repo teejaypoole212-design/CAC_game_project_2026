@@ -118,6 +118,7 @@ public:
     Vector2 knockback_vel{0.0f, 0.0f};
     float knockback_time = 0.0f;
 
+
     void apply_knockback(Vector2 from_pos, float strength = 220.0f);
 
 
