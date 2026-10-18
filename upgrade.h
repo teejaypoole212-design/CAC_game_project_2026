@@ -1,7 +1,7 @@
+#pragma once
+
 //upgrades
 #include "types.h"
-#include "pch.h"
-#include "player.h"
 
 #include <vector>
 
@@ -22,7 +22,7 @@
 //fully unique
 
 
-
+class Player;
 
 
 
@@ -32,16 +32,19 @@
 class upgrade {
 private:
     upgrade_type type; //if its special it can only be given to player once
+    std::string name;
     int id; //in handling area it will be given a desciption and atual effect off of the id
 protected:
 public:
-upgrade(upgrade_type TYPE, int ID);
+upgrade(upgrade_type TYPE, int ID, std::string NAME);
 
+    std::string get_name() const {return name;}
     upgrade_type get_upgrade_type() const {return type;}
     int get_id() const {return id;}
 }; //for making and containing all upgrade options inside a arry for random selection 
 
 bool check_avaliblity(int id_check,int max_allowed, std::vector<upgrade> &list);
+int get_instances_owned(int id_check, std::vector<upgrade> &list);
 upgrade generate_upgrade_option(std::vector<upgrade> &list);
 std::string get_description(int obj_id);
 

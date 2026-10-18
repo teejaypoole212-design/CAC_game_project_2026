@@ -7,6 +7,7 @@
 #include "arrow_handler.h"
 #include "render_ui.h"
 #include "types.h"
+#include "upgrade.h"
 
 #include <iostream>
 #include <vector>
@@ -56,7 +57,7 @@ void spawn_player_attack(std::unique_ptr<base_attack> attack);
 void spawn_ai_attack(std::unique_ptr<base_attack> attack);
 
 void draw(Player& player, ai_combat_system& ai, arrow_handler& arrow,
-          std::string& name, Color& color, Shape& shape, int& step);
+          std::string& name, Color& color, Shape& shape, int& step, std::vector<upgrade> &list);
 
 void update(float dt, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on,
             std::string& name, Color& color, Shape& shape, int& step);

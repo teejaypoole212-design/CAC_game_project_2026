@@ -25,6 +25,7 @@ int player_step = 0;
 
 bool in_game = true;
 
+std::vector<upgrade> upgrade_list;
 arrow_handler arrow_han;
 Game game;
 Player player("place_holder_name", Shape::rect, RED);
@@ -40,7 +41,12 @@ const char* const MODEL_PATH = "model.pt";       // new name: the old 10-action 
 }
 
 int main() {
-    game.change_ui_state(game_ui_state::START_MENU); //temp for testing 
+
+    SetRandomSeed((unsigned int)time(nullptr));
+    srand(static_cast<unsigned>(time(nullptr)));
+    
+    setup_upgrade_menu(upgrade_list);
+    game.change_ui_state(game_ui_state::UPGRADE_MENU); //temp for testing 
     srand(static_cast<unsigned>(time(nullptr)));
 
     player.set_position({1860.0f, 540.0f});
@@ -111,7 +117,7 @@ int main() {
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        game.draw(player,ai,arrow_han, player_name,player_color,player_shape,player_step);
+        game.draw(player,ai,arrow_han, player_name,player_color,player_shape,player_step, upgrade_list);
         if (debug) {
         DrawText(TextFormat("AI HP: %d   state: %s", ai.get_hp(), ai.get_state_name()), 10, 10, 20, BLACK);
         DrawText(TextFormat("eps %.3f   loss %.4f   replay %d   decisions %lld", ai.get_epsilon(),

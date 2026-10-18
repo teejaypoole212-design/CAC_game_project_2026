@@ -29,3 +29,7 @@ pch.h.gch
 # Shared libraries
 *.so
 libraylib.so*.gch
+<<<<<<< HEAD
+=======
+*.gch
+>>>>>>> 6c286b0 (signifagntly improved upgrade logic)

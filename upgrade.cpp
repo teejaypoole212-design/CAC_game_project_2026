@@ -1,8 +1,9 @@
 #include "upgrade.h"
 
+#include "player.h"
 
-upgrade::upgrade(upgrade_type TYPE,int ID) 
-: type(TYPE),id(ID) {}
+upgrade::upgrade(upgrade_type TYPE,int ID, std::string NAME) 
+: type(TYPE),id(ID), name(NAME) {}
 
 
 
@@ -21,31 +22,44 @@ bool check_avaliblity(int id_check,int max_allowed, std::vector<upgrade> &list) 
     }
 }
 
+
+int get_instances_owned(int id_check, std::vector<upgrade> &list) {
+    int amount = 0;
+
+    for (auto &a : list) {
+        if (a.get_id() == id_check) {
+            amount ++;
+        }
+    }
+    return amount;
+}
+
 upgrade generate_upgrade_option(std::vector<upgrade>& list) {
     int id;
     int max_allowed;
     upgrade_type type;
+    std::string name; 
 
     while (true) {
         int id_roll = GetRandomValue(1, 46);
 
         switch (id_roll) {
-            case 1 ... 10:   id = 1;  max_allowed = 9999; type = upgrade_type::STANDARD; break; // health
-            case 11 ... 20:  id = 2;  max_allowed = 9999; type = upgrade_type::STANDARD; break; // damage
-            case 21 ... 30:  id = 3;  max_allowed = 9999; type = upgrade_type::STANDARD; break; // speed
-            case 31 ... 40:  id = 4;  max_allowed = 9999; type = upgrade_type::STANDARD; break; // melee speed
-            case 41:         id = 5;  max_allowed = 5;    type = upgrade_type::STANDARD; break;
-            case 42:         id = 6;  max_allowed = 3;    type = upgrade_type::STANDARD; break;
-            case 43:         id = 7;  max_allowed = 2;    type = upgrade_type::STANDARD; break;
-            case 44:         id = 8;  max_allowed = 1;    type = upgrade_type::SPECIAL;  break;
-            case 45:         id = 9;  max_allowed = 1;    type = upgrade_type::SPECIAL;  break;
-            case 46:         id = 10; max_allowed = 1;    type = upgrade_type::SPECIAL;  break;
+            case 1 ... 10:   id = 1;  max_allowed = 9999; type = upgrade_type::STANDARD; name = "health upgrade"; break; // health
+            case 11 ... 20:  id = 2;  max_allowed = 9999; type = upgrade_type::STANDARD; name = "damage upgrade"; break; // damage
+            case 21 ... 30:  id = 3;  max_allowed = 9999; type = upgrade_type::STANDARD; name = "speed upgrade"; break; // speed
+            case 31 ... 40:  id = 4;  max_allowed = 9999; type = upgrade_type::STANDARD; name = "meele speed upgrade"; break; // melee speed
+            case 41:         id = 5;  max_allowed = 5;    type = upgrade_type::STANDARD; name = "life steal"; break;
+            case 42:         id = 6;  max_allowed = 3;    type = upgrade_type::STANDARD; name = "starting arrow"; break;
+            case 43:         id = 7;  max_allowed = 2;    type = upgrade_type::STANDARD; name = "poisoned blade"; break;
+            case 44:         id = 8;  max_allowed = 1;    type = upgrade_type::SPECIAL;  name = "first hit sheild"; break;
+            case 45:         id = 9;  max_allowed = 1;    type = upgrade_type::SPECIAL;  name = "dash"; break;
+            case 46:         id = 10; max_allowed = 1;    type = upgrade_type::SPECIAL;  name = "charge attack"; break;
         }
 
         if (check_avaliblity(id, max_allowed, list)) break;
     }
 
-    return upgrade(type, id);
+    return upgrade(type, id, name);
 }
 
 std::string get_description(int obj_id) {

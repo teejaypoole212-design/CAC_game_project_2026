@@ -89,19 +89,21 @@ void Game::spawn_ai_attack(std::unique_ptr<base_attack> attack) {
 }
 
 
-void Game::draw(Player& player, ai_combat_system& ai, arrow_handler& arrow, std::string& name, Color& color, Shape& shape, int& step) {
+void Game::draw(Player& player, ai_combat_system& ai, arrow_handler& arrow, std::string& name, Color& color, Shape& shape, int& step, std::vector<upgrade> &list) {
 switch (this->get_game_ui_state()) {
         case game_ui_state::START_MENU: render_start_menu(); break;
         case game_ui_state::SETUP_MENU: render_setup_menu(name, color, shape, step); break;
         case game_ui_state::IN_GAME:    render_main_game(*this, player, ai, arrow); break;
+        case game_ui_state::UPGRADE_MENU: render_after_round(); break;
         case game_ui_state::DEATH_MENU: render_end_menu(); break;
-    }
+    } 
 }
 void Game::update(float dt, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on, std::string& name, Color& color, Shape& shape, int& step) {
 switch (this->get_game_ui_state()) {
         case game_ui_state::START_MENU: update_start_menu(*this); break;
         case game_ui_state::SETUP_MENU: update_setup_menu(name, color, shape, step, *this); break;
         case game_ui_state::IN_GAME:    update_main_game(dt, *this, player, ai, arrow, round_on); break;
+        case game_ui_state::UPGRADE_MENU: update_after_round(); break;
         case game_ui_state::DEATH_MENU: /*update_end_menu();*/ break; //there is no update inside end (its ended :) ) 
     }
 }

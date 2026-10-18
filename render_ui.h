@@ -5,6 +5,7 @@
 #include "ai.h"              // ai_combat_system
 #include "arrow_handler.h"
 #include "types.h"
+#include "upgrade.h"
 
 class Game;                  // forward declaration is enough for references
 
@@ -19,6 +20,7 @@ void update_main_game(float dt, Game& game, Player& player, ai_combat_system& ai
 
 void render_after_round(); //this is where im gouing to put the upgrades in
 void update_after_round();
+void setup_upgrade_menu(std::vector<upgrade> &list);
 
 void render_end_menu();
 

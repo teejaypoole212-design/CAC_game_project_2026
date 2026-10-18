@@ -482,20 +482,192 @@ void update_main_game(float dt, Game& game, Player& player, ai_combat_system& ai
     arrow.update_all(player, ai);
 }
 
+upgrade upgrade1(upgrade_type::STANDARD, 0, "placeholder");
+upgrade upgrade2(upgrade_type::STANDARD, 0, "placeholder");
+upgrade upgrade3(upgrade_type::STANDARD, 0, "placeholder");
 
+std::string titles[3]       = { "TITLE 1", "TITLE 2", "SPECIAL TITLE" };
+std::string descriptions[3] = { "Description 1", "Description 2", "Golden and sparkly!" };
+bool        is_special[3]   = { false, false, true };
 
+void update_after_round() {
+    Vector2 mouse = GetMousePosition();
+    float sw = (float)GetScreenWidth(), sh = (float)GetScreenHeight();
+    float margin = sw * 0.04f, gap = sw * 0.02f;
+    float w = (sw - margin * 2 - gap * 2) / 3.0f;
+    float h = sh - margin * 2;
 
+    for (int i = 0; i < 3; i++) {
+        Rectangle card = { margin + i * (w + gap), margin, w, h };
+        float pad = w * 0.08f, bh = h * 0.12f;
+        Rectangle btn = { card.x + pad, card.y + h - bh - pad, w - pad * 2, bh };
 
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mouse, btn)) {
+            // TODO: card i was chosen -> apply its upgrade, change game state
+        }
+    }
+}
 
+void setup_upgrade_menu(std::vector<upgrade> &list) {
+    upgrade1 = generate_upgrade_option(list);
+    upgrade2 = generate_upgrade_option(list);
+    upgrade3 = generate_upgrade_option(list);
 
+    titles[0] = upgrade1.get_name();
+    titles[1] = upgrade2.get_name();
+    titles[2] = upgrade3.get_name();
 
+    descriptions[0] = get_description(upgrade1.get_id());
+    descriptions[1] = get_description(upgrade2.get_id());
+    descriptions[2] = get_description(upgrade3.get_id());
 
+    is_special[0] = (upgrade1.get_upgrade_type() == upgrade_type::SPECIAL);
+    is_special[1] = (upgrade2.get_upgrade_type() == upgrade_type::SPECIAL);
+    is_special[2] = (upgrade3.get_upgrade_type() == upgrade_type::SPECIAL);
+}
 
 void render_after_round() {
 
-}
-void update_after_round() {
+    const Color accents[3] = { {0, 220, 255, 255}, {255, 80, 200, 255}, {110, 255, 120, 255} };
+    const Color dark = { 15, 15, 25, 255 };
 
+    float t = (float)GetTime();
+    Vector2 mouse = GetMousePosition();
+    float sw = (float)GetScreenWidth(), sh = (float)GetScreenHeight();
+    float margin = sw * 0.04f, gap = sw * 0.02f;
+    float w = (sw - margin * 2 - gap * 2) / 3.0f;
+    float h = sh - margin * 2;
+
+
+    {
+        auto rnd = [](int k, float salt) {
+            float v = sinf(k * 12.9898f + salt * 78.233f) * 43758.5453f;
+            return v - floorf(v);
+        };
+
+        // 1) four-corner gradient, each corner a different hue, all cycling through the spectrum
+        float hs = t * 30.0f;
+        Color c_tl = ColorFromHSV(fmodf(hs,          360.0f), 0.80f, 0.60f);
+        Color c_bl = ColorFromHSV(fmodf(hs +  90.0f, 360.0f), 0.80f, 0.45f);
+        Color c_br = ColorFromHSV(fmodf(hs + 180.0f, 360.0f), 0.80f, 0.60f);
+        Color c_tr = ColorFromHSV(fmodf(hs + 270.0f, 360.0f), 0.80f, 0.45f);
+        DrawRectangleGradientEx({ 0, 0, sw, sh }, c_tl, c_bl, c_br, c_tr);
+
+        // 2) big soft color blobs drifting around (lava-lamp feel)
+        for (int k = 0; k < 6; k++) {
+            float bx = sw * (0.5f + 0.45f * sinf(t * (0.25f + rnd(k, 1.0f) * 0.3f) + k * 2.0f));
+            float by = sh * (0.5f + 0.45f * cosf(t * (0.20f + rnd(k, 2.0f) * 0.3f) + k * 1.3f));
+            float br = sh * (0.25f + 0.2f * rnd(k, 3.0f));
+            Color bc = ColorFromHSV(fmodf(hs * 1.5f + k * 60.0f, 360.0f), 0.7f, 1.0f);
+            for (int s = 0; s < 5; s++)   // stacked circles = soft edge
+                DrawCircleV({ bx, by }, br * (1.0f - s * 0.18f), Fade(bc, 0.07f));
+        }
+
+        // 3) fast soda bubbles in every color
+        for (int k = 0; k < 90; k++) {
+            float r      = 6.0f + rnd(k, 1.0f) * 40.0f;
+            float speed  = 140.0f + rnd(k, 2.0f) * 320.0f;   // faster (was 25-115)
+            float total  = sh + r * 2.0f;
+            float y      = sh + r - fmodf(t * speed + rnd(k, 3.0f) * total, total);
+            float x      = rnd(k, 4.0f) * sw + sinf(t * (2.0f + rnd(k, 5.0f) * 2.0f) + k) * 26.0f;
+            Color bc     = ColorFromHSV(fmodf(rnd(k, 6.0f) * 360.0f + t * 60.0f, 360.0f), 0.65f, 1.0f);
+
+            DrawCircleV({ x, y }, r, Fade(bc, 0.25f));
+            DrawCircleLinesV({ x, y }, r, Fade(bc, 0.9f));
+            DrawCircleV({ x - r * 0.35f, y - r * 0.35f }, r * 0.18f, Fade(WHITE, 0.75f));
+        }
+
+        // light dim so cards pop (lower or delete for a brighter look)
+        DrawRectangle(0, 0, (int)sw, (int)sh, Fade(BLACK, 0.15f));
+    }
+
+    // ===== CARDS =====
+    for (int i = 0; i < 3; i++) {
+        Rectangle card = { margin + i * (w + gap), margin, w, h };
+        bool hover = CheckCollisionPointRec(mouse, card);
+        if (hover) card.y -= 12;
+
+        bool sp = is_special[i];
+        float pulse = 0.5f + 0.5f * sinf(t * 4.0f + i);
+        Color accent = sp ? Color{255, 200, 40, 255} : accents[i];
+        Color body   = sp ? Color{70, 45, 5, 255}    : Color{22, 22, 45, 255};
+
+        // shadow + glow
+        DrawRectangleRounded({ card.x + 6, card.y + 10, w, h }, 0.06f, 12, Fade(BLACK, 0.5f));
+        float glow = sp ? (0.5f + 0.5f * pulse) : (hover ? 0.8f : 0.0f);
+        for (int k = 1; k <= 4; k++) {
+            Rectangle g = { card.x - k * 4.0f, card.y - k * 4.0f, w + k * 8.0f, h + k * 8.0f };
+            DrawRectangleRoundedLinesEx(g, 0.06f, 12, 3.0f, Fade(accent, glow * 0.25f / k));
+        }
+
+        // body + border
+        DrawRectangleRounded(card, 0.06f, 12, body);
+        DrawRectangleRoundedLinesEx(card, 0.06f, 12, 4.0f, sp ? Fade(accent, 0.7f + 0.3f * pulse) : accent);
+
+        float pad = w * 0.06f;
+
+        // header label
+        Rectangle head = { card.x + pad, card.y + pad, w - pad * 2, h * 0.13f };
+        DrawRectangleRounded(head, 0.3f, 10, accent);
+        int ts = (int)(w * 0.09f);
+        while (ts > 10 && MeasureText(titles[i].c_str(), ts) > head.width - 16) ts--;
+        DrawText(titles[i].c_str(),
+                 (int)(head.x + head.width / 2 - MeasureText(titles[i].c_str(), ts) / 2.0f),
+                 (int)(head.y + (head.height - ts) / 2), ts, dark);
+
+        // icon placeholder
+        float ir = w * 0.16f;
+        Vector2 ic = { card.x + w / 2, head.y + head.height + h * 0.05f + ir };
+        DrawCircleV(ic, ir, Fade(accent, 0.25f));
+        DrawCircleLinesV(ic, ir, accent);
+        // TODO: draw the upgrade icon here (replace the "?")
+        DrawText("?", (int)(ic.x - MeasureText("?", (int)ir) / 2.0f), (int)(ic.y - ir * 0.5f), (int)ir, accent);
+
+        // description (auto word-wrap)
+        float pad2 = w * 0.08f, bh = h * 0.12f;
+        Rectangle btn = { card.x + pad2, card.y + h - bh - pad2, w - pad2 * 2, bh };
+        float dy = ic.y + ir + h * 0.04f;
+        int ds = (int)(w * 0.06f);
+        std::string line, word;
+        const std::string& txt = descriptions[i];
+        for (size_t c = 0; c <= txt.size(); c++) {
+            if (c == txt.size() || txt[c] == ' ') {
+                std::string test = line.empty() ? word : line + " " + word;
+                if (!line.empty() && MeasureText(test.c_str(), ds) > w - pad * 2) {
+                    DrawText(line.c_str(), (int)(card.x + w / 2 - MeasureText(line.c_str(), ds) / 2.0f), (int)dy, ds, RAYWHITE);
+                    dy += ds * 1.35f;
+                    line = word;
+                } else line = test;
+                word.clear();
+            } else word += txt[c];
+        }
+        if (!line.empty())
+            DrawText(line.c_str(), (int)(card.x + w / 2 - MeasureText(line.c_str(), ds) / 2.0f), (int)dy, ds, RAYWHITE);
+
+        // CHOOSE button
+        bool over = CheckCollisionPointRec(mouse, btn);
+        Rectangle b = btn;
+        if (over && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) b.y += 3;
+        DrawRectangleRounded({ b.x, b.y + 4, b.width, b.height }, 0.35f, 10, Fade(BLACK, 0.45f));
+        DrawRectangleRounded(b, 0.35f, 10, over ? WHITE : accent);
+        int bs = (int)(b.height * 0.5f);
+        DrawText("CHOOSE", (int)(b.x + b.width / 2 - MeasureText("CHOOSE", bs) / 2.0f), (int)(b.y + (b.height - bs) / 2), bs, dark);
+
+        // sparkles (stateless, driven by time)
+        if (sp) {
+            for (int k = 0; k < 40; k++) {
+                float seed  = k * 0.618034f;
+                float phase = fmodf(t * (0.25f + 0.35f * fmodf(seed * 7.0f, 1.0f)) + seed, 1.0f);
+                float x = card.x + fmodf(seed * 13.37f, 1.0f) * w;
+                float y = card.y + h * (1.0f - phase);
+                float a = sinf(phase * PI);
+                float sz = (4.0f + 7.0f * fmodf(seed * 5.0f, 1.0f)) * (0.5f + 0.5f * a);
+                DrawLineEx({ x - sz, y }, { x + sz, y }, 2.0f, Fade(GOLD, a));
+                DrawLineEx({ x, y - sz }, { x, y + sz }, 2.0f, Fade(GOLD, a));
+                DrawCircleV({ x, y }, sz * 0.25f, Fade(WHITE, a));
+            }
+        }
+    }
 }
 
 void render_end_menu() {
