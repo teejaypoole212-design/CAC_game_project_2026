@@ -19,7 +19,7 @@ void render_main_game(Game& game, Player& player, ai_combat_system& ai, arrow_ha
 void update_main_game(float dt, Game& game, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on = true);
 
 void render_after_round(); //this is where im gouing to put the upgrades in
-void update_after_round();
+void update_after_round(std::vector<upgrade> &list, Game &game);
 void setup_upgrade_menu(std::vector<upgrade> &list);
 
 void render_end_menu();

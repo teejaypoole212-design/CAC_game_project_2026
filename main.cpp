@@ -13,6 +13,9 @@
 #include <cstdlib>
 #include <ctime>
 #include <memory>
+#include <format>
+#include <string>
+
 
 extern bool debug;
 extern bool g_sparring_enabled;   // in game.cpp
@@ -22,6 +25,9 @@ std::string player_name;
 Color player_color;
 Shape player_shape;
 int player_step = 0;
+
+int current_round = 1;
+std::string MODEL_PATH = "modelv_1.pt";
 
 bool in_game = true;
 
@@ -37,7 +43,6 @@ constexpr double TRAIN_BUDGET_MS = 12.0;            // wall-clock spent simulati
 constexpr int    MAX_TRAIN_STEPS_PER_FRAME = 20000;
 constexpr double AUTOSAVE_SECONDS = 120.0;
 constexpr double TRAIN_TIME_LIMIT_MINUTES = 5.0;    // stops after this much *fast-training* time; 0 = never
-const char* const MODEL_PATH = "model.pt";       // new name: the old 10-action model.pt can't be loaded
 }
 
 int main() {
@@ -45,13 +50,13 @@ int main() {
     SetRandomSeed((unsigned int)time(nullptr));
     srand(static_cast<unsigned>(time(nullptr)));
     
-    setup_upgrade_menu(upgrade_list);
-    game.change_ui_state(game_ui_state::UPGRADE_MENU); //temp for testing 
+    setup_upgrade_menu(upgrade_list); 
     srand(static_cast<unsigned>(time(nullptr)));
 
     player.set_position({1860.0f, 540.0f});
     ai.load_model(MODEL_PATH);                      // continue from the last run if there is one
     game.end_round(player, ai, arrow_han);          // initial reset only (nothing to score yet)
+    game.change_ui_state(game_ui_state::START_MENU); //end round sets it to upgrade, make sure it stays on start
 
     InitWindow(1920, 1080, "Raylib 1080p Window");
     SetTargetFPS(60);
@@ -94,7 +99,7 @@ int main() {
             int n = 0;
             while (n < MAX_TRAIN_STEPS_PER_FRAME) {
                 game.update(FIXED_DT, player, ai, arrow_han, true,
-                    player_name, player_color, player_shape, player_step);
+                    player_name, player_color, player_shape, player_step, upgrade_list);
                 ++n;
                 if ((n & 15) == 0 && (GetTime() - t0) * 1000.0 >= TRAIN_BUDGET_MS) break;
             }
@@ -104,7 +109,7 @@ int main() {
             accumulator += (float)std::min(frame_real, 0.1);
             steps_last_frame = 0;
             while (accumulator >= FIXED_DT) {
-                game.update(FIXED_DT, player, ai, arrow_han, true, player_name,player_color,player_shape,player_step);
+                game.update(FIXED_DT, player, ai, arrow_han, true, player_name,player_color,player_shape,player_step,upgrade_list);
                 accumulator -= FIXED_DT;
                 ++steps_last_frame;
             }

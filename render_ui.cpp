@@ -36,7 +36,7 @@ void resolve_damage(Game& game, Player& player, ai_combat_system& ai) {
         base_attack* a = up.get();
         if (!a->is_Alive() || hit_once.count(a)) continue;
         if (!a->get_hitbox().check_collision(ai.get_hitbox())) continue;
-        ai.take_damage((int)a->get_damage());                       // the AI learns from this automatically
+        ai.take_damage((int)a->get_damage(), player.get_pos());                       // the AI learns from this automatically
         if (dynamic_cast<ranged_attack*>(a)) a->kill(); else hit_once.insert(a);
     }
     for (auto& up : aa) {                                           // AI -> player
@@ -490,7 +490,7 @@ std::string titles[3]       = { "TITLE 1", "TITLE 2", "SPECIAL TITLE" };
 std::string descriptions[3] = { "Description 1", "Description 2", "Golden and sparkly!" };
 bool        is_special[3]   = { false, false, true };
 
-void update_after_round() {
+void update_after_round(std::vector<upgrade> &list, Game &game) {
     Vector2 mouse = GetMousePosition();
     float sw = (float)GetScreenWidth(), sh = (float)GetScreenHeight();
     float margin = sw * 0.04f, gap = sw * 0.02f;
@@ -503,7 +503,18 @@ void update_after_round() {
         Rectangle btn = { card.x + pad, card.y + h - bh - pad, w - pad * 2, bh };
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(mouse, btn)) {
-            // TODO: card i was chosen -> apply its upgrade, change game state
+            if (i == 0) {
+                list.push_back(upgrade1);
+                game.change_ui_state(game_ui_state::IN_GAME);
+            }
+            if (i == 1) {
+                list.push_back(upgrade2);
+                game.change_ui_state(game_ui_state::IN_GAME);
+            }
+            if (i == 2) {
+                list.push_back(upgrade3);
+                game.change_ui_state(game_ui_state::IN_GAME);
+            }
         }
     }
 }

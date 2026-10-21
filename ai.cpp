@@ -1,3 +1,7 @@
+//this file was written partially by, and reformed with the use of AI
+
+
+
 #include "ai.h"
 #include "player.h"
 
@@ -9,9 +13,6 @@
 
 bool debug = true;   // plain global on purpose: other files reference it with `extern`
 
-// ============================================================================
-//  1. TUNING  -  every number here
-// ============================================================================
 namespace {
 namespace tune {
     constexpr float PI_F = 3.14159265f;
@@ -84,9 +85,6 @@ namespace tune {
     constexpr float EPS_DECAY_DECISIONS = 150000.0f;
 }
 
-// ============================================================================
-//  2. HELPERS
-// ============================================================================
 inline Vector2 V2(float x, float y)        { return Vector2{x, y}; }
 inline Vector2 v_add(Vector2 a, Vector2 b) { return Vector2{a.x + b.x, a.y + b.y}; }
 inline Vector2 v_sub(Vector2 a, Vector2 b) { return Vector2{a.x - b.x, a.y - b.y}; }
@@ -131,6 +129,7 @@ bool segment_hits_rect(Vector2 a, Vector2 b, const Rectangle& r) {
     return true;
 }
 
+
 // point at fraction t (0..1) along the perimeter of r
 Vector2 perimeter_point(const Rectangle& r, float t) {
     float s = t * 2.0f * (r.width + r.height);
@@ -156,9 +155,7 @@ const char* ai_combat_system::state_name(int id) {
 }
 const char* ai_combat_system::get_state_name() const { return state_name(current_state); }
 
-// ============================================================================
-//  3. NETWORK + CONSTRUCTOR
-// ============================================================================
+
 combat_net_impl_type::combat_net_impl_type(int64_t inputs, int64_t actions) {
     fc1       = register_module("fc1",       torch::nn::Linear(inputs, tune::HIDDEN));
     fc2       = register_module("fc2",       torch::nn::Linear(tune::HIDDEN, tune::HIDDEN));
@@ -222,9 +219,23 @@ float ai_combat_system::rand_range(float a, float b) { return a + (b - a) * rand
 int   ai_combat_system::rand_sign() { return rand01() < 0.5f ? -1 : 1; }
 float ai_combat_system::gauss(float sigma) { return std::normal_distribution<float>(0.0f, sigma)(rng); }
 
-// ============================================================================
-//  4. BODY, HOOKS, EPISODE CONTROL
-// ============================================================================
+
+void ai_combat_system::apply_knockback(Vector2 from_pos, float strength) {
+    Vector2 dir{
+        ai_position.x - from_pos.x,
+        ai_position.y - from_pos.y
+    };
+    float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+    if (len < 1e-3f) dir = {1.0f, 0.0f};
+    else { dir.x /= len; dir.y /= len; }
+
+    ai_position.x += dir.x * 40.0f;
+    ai_position.y += dir.y * 40.0f;
+
+    knockback_vel = { dir.x * strength, dir.y * strength };
+    knockback_time = 0.20f;
+}
+
 void ai_combat_system::change_position_x(float dx) { ai_position.x += dx; hitbox.set_position(ai_position); }
 void ai_combat_system::change_position_y(float dy) { ai_position.y += dy; hitbox.set_position(ai_position); }
 
@@ -233,7 +244,10 @@ bool ai_combat_system::can_shoot_now() const { return arrow_count > 0 && ranged_
 bool ai_combat_system::can_attack() const    { return can_melee_now() || can_shoot_now(); }
 
 // Every damage source goes through here, so the AI learns from walls, traps, arrows...
-void ai_combat_system::take_damage(int amount) {
+void ai_combat_system::take_damage(int amount,Vector2 knockback_pos) {
+    //apply_knockback(knockback_pos, 220.0f); i honestly feel like the knockback makes it to easy (ai isnt trained for it)
+    flash_red(0.5f);
+
     if (amount <= 0) {                                   // negative = heal
         ai_hp = std::min(ai_max_hp, ai_hp - amount);
         return;
@@ -326,9 +340,9 @@ void ai_combat_system::end_episode(episode_outcome outcome) {
     }
 }
 
-// ============================================================================
-//  5. PERCEPTION  - what a human would see on screen
-// ============================================================================
+
+
+
 float ai_combat_system::edge_distance(Vector2 p) const {
     return std::min(std::min(p.x - arena.x, arena.x + arena.width - p.x),
                     std::min(p.y - arena.y, arena.y + arena.height - p.y));
@@ -515,9 +529,9 @@ void ai_combat_system::perceive(float dt, const Player& player, const attack_lis
     threat_prev = threat_now;
 }
 
-// ============================================================================
+
 //  6. OBSERVATION (what the network sees) + ACTION MASK (what it may pick)
-// ============================================================================
+
 std::array<float, ai_combat_system::STATE_SIZE> ai_combat_system::build_observation() const {
     std::array<float, STATE_SIZE> f{};
     int n = 0;
@@ -634,9 +648,9 @@ uint32_t ai_combat_system::compute_valid_mask() const {
     return m;
 }
 
-// ============================================================================
+
 //  7. DECISION LOOP + MOTION
-// ============================================================================
+
 bool ai_combat_system::decision_due() const {
     if (current_state < 0 || state_finished) return true;
     if (state_time >= state_duration) return true;
@@ -797,6 +811,25 @@ void ai_combat_system::accumulate_reward(float dt) {
 
 void ai_combat_system::update(float dt, const Player& player, const attack_list& player_attacks,
                               const attack_spawner& spawn_ai_attack) {
+
+
+    tick_flash(dt);
+
+
+    if (knockback_time > 0.0f) {
+        ai_position.x += knockback_vel.x * dt;
+        ai_position.y += knockback_vel.y * dt;
+
+        knockback_time -= dt;
+        float damp = std::max(0.0f, 1.0f - 5.0f * dt);
+        knockback_vel.x *= damp;
+        knockback_vel.y *= damp;
+
+        // still do cooldowns / timers if you need, but NO move/state drive
+        return;
+    }
+
+
     if (episode_closed) return;                          // round is over; wait for reset_episode()
     dt = clampf(dt, 1e-4f, 0.05f);
     spawner = &spawn_ai_attack;
@@ -830,15 +863,9 @@ void ai_combat_system::update(float dt, const Player& player, const attack_list&
     spawner = nullptr;
 }
 
-// ============================================================================
-//  8. THE 32 STATES
-//  Each st_NAME() runs once per tick while it is active and returns the velocity it
-//  wants (px/s) + whether it is finished. Available to every state:
-//    state_time (s since start)   state_duration (planned length)   state_sign (+-1 random)
-//    dist / to_p / p_pos / p_vel  (the player)    aux_f[3], aux_pos, aux_locked (scratch)
-//    fire_melee() / fire_ranged() (obey cooldowns; return true when they actually fired)
-//  Movement is smoothed and wall/trap/player-body-safe automatically (integrate_motion).
-// ============================================================================
+
+
+
 bool ai_combat_system::fire_melee(Vector2 aim_at, float lead_seconds) {
     if (!spawner || !can_melee_now()) return false;
     const Vector2 target = v_add(aim_at, v_scl(p_vel, lead_seconds));          // swing where they'll be
@@ -1265,9 +1292,9 @@ ai_combat_system::steer_cmd ai_combat_system::st_MOVE_BEHIND_COVER() {   // get 
     return c;
 }
 
-// ============================================================================
+
 //  9. LEARNING  -  Double + Dueling DQN over *states* (semi-MDP, masked)
-// ============================================================================
+
 // epsilon-greedy, but only ever over the states that are legal right now
 int64_t ai_combat_system::choose_action(torch::Tensor state) {
     const uint32_t mask = current_valid_mask ? current_valid_mask : 0xFFFFFFFFu;
@@ -1401,14 +1428,15 @@ void ai_combat_system::load_model(const std::string& path) {
     }
 }
 
-// ============================================================================
+
 //  10. DRAW
-// ============================================================================
+
 void ai_combat_system::draw() {
     const Vector2 size = V2(40.0f, 40.0f);
-    DrawRectangleV(V2(ai_position.x - 20.0f, ai_position.y - 20.0f), size, WHITE);
-    DrawRectangleLines((int)(ai_position.x - 20.0f), (int)(ai_position.y - 20.0f), 40, 40, BLACK);
+    const Color body = is_flashing() ? RED : WHITE;
 
+    DrawRectangleV(V2(ai_position.x - 20.0f, ai_position.y - 20.0f), size, body);
+    DrawRectangleLines((int)(ai_position.x - 20.0f), (int)(ai_position.y - 20.0f), 40, 40, BLACK);
 
     const int x = (int)ai_position.x - 20, y = (int)ai_position.y - 36;
     const float hp = clampf((float)ai_hp / (float)ai_max_hp, 0.0f, 1.0f);
@@ -1418,16 +1446,15 @@ void ai_combat_system::draw() {
 
     if (!debug) return;
     DrawText(get_state_name(), x - 20, y - 16, 14, DARKGRAY);
-    DrawRectangle(x, y + 7, 12, 4, melee_cd <= 0.0f ? MAROON : LIGHTGRAY);                 // melee ready
-    DrawRectangle(x + 14, y + 7, 12, 4, (arrow_count > 0 && ranged_cd <= 0.0f) ? PURPLE : LIGHTGRAY);   // bow ready
-    DrawText(TextFormat("%d", arrow_count), x + 29, y + 4, 10, DARKGRAY);                  // arrows held
-}
+    DrawRectangle(x, y + 7, 12, 4, melee_cd <= 0.0f ? MAROON : LIGHTGRAY);
+    DrawRectangle(x + 14, y + 7, 12, 4, (arrow_count > 0 && ranged_cd <= 0.0f) ? PURPLE : LIGHTGRAY);
+    DrawText(TextFormat("%d", arrow_count), x + 29, y + 4, 10, DARKGRAY);
+} //tiki tiki i hate c++ :(
 
-// ============================================================================
 //  11. SPARRING BOT  - a scripted opponent for fast training (drives the Player object)
 //  Without it the AI trains against a statue and only ever learns "walk up and swing".
 //  Five personalities, re-rolled every episode, so the policy has to generalise.
-// ============================================================================
+
 float g_bot_skill_override = -1.0f;   // < 0: random skill each episode
 
 namespace {
@@ -1571,4 +1598,20 @@ void sparring_bot::update(float dt, Player& player, const ai_combat_system& ai, 
         ranged_cd = 1.5f;
         lock = 0.30f;
     }
+}
+
+
+
+
+void ai_combat_system::flash_red(float seconds) {
+    flash_timer = seconds;
+}
+
+void ai_combat_system::tick_flash(float dt) {
+    if (flash_timer > 0.0f)
+        flash_timer = std::max(0.0f, flash_timer - dt);
+}
+
+bool ai_combat_system::is_flashing() const {
+    return flash_timer > 0.0f;
 }

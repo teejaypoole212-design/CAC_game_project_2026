@@ -23,7 +23,8 @@ extern float g_bot_skill_override;   // tests only: >= 0 fixes the sparring bot'
 
 
 enum ai_category { CAT_APPROACH, CAT_RETREAT, CAT_LATERAL, CAT_MELEE,
-                   CAT_RANGED, CAT_RESOURCE, CAT_TRICK, CAT_POSITION, CAT_COUNT };
+                   CAT_RANGED, CAT_RESOURCE, CAT_TRICK, CAT_POSITION, CAT_COUNT }; //cat :)
+
 
 #define AI_STATE_LIST(X) \
     /* --- closing the gap ------------------------------------------------ */ \
@@ -111,6 +112,21 @@ public:
     static constexpr int raw_state_size = STATE_SIZE;   // legacy names, so the old
     static constexpr int stack_size     = 1;            // main.cpp line still compiles
 
+
+
+
+    Vector2 knockback_vel{0.0f, 0.0f};
+    float knockback_time = 0.0f;
+
+    void apply_knockback(Vector2 from_pos, float strength = 220.0f);
+
+
+    float flash_timer = 0.0f;
+
+    void flash_red(float seconds = 0.5f); //just for a little bit of feedback
+    void tick_flash(float dt);
+    bool is_flashing() const;
+
     // sizes are accepted for compatibility but always forced to STATE_SIZE / ACTION_COUNT
     ai_combat_system(int64_t input_size = STATE_SIZE, int64_t action_size = ACTION_COUNT);
 
@@ -125,7 +141,7 @@ public:
     int  get_episode_ticks() const { return episode_ticks; }
 
     // ---- CONTACT / EVENT HOOKS - call these from your collision code ------
-    void take_damage(int amount);                    // ANY damage source: the AI learns from it automatically
+    void take_damage(int amount, Vector2 knockback_pos);                    // ANY damage source: the AI learns from it automatically
     void on_hit_player(int damage, bool was_melee);  // the AI's attack landed
     void on_wall_contact(Vector2 surface_normal = {0.0f, 0.0f});  // walked into a wall (normal points away from the wall)
     void on_trap_contact(float penalty = 0.30f);     // stepped on a trap (apply its damage with take_damage())

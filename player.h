@@ -97,7 +97,7 @@ void add_speed_mult(float add) {speed_mult += add;}
 void add_damage_mult(int add) {damage_mult += add;}
 void add_meele_speed_mult(float add) {speed_mult += add;}
 
-void take_damage(int amount) {health -= amount;}
+void take_damage(int amount);
 void add_projectile(int a) {ranged_projectile_count += a;} 
 //getters
 int get_health() const {return health;}
@@ -120,6 +120,13 @@ float get_meele_cooldown_current() {return meele_cooldown_current;}
 float get_meele_cooldown_max() const {return meele_cooldown_max;}
 
 //misc funcs
+
+float flash_timer = 0.0f;
+
+void flash_red(float seconds = 0.5f);
+void tick_flash(float dt);
+bool is_flashing() const;
+
 
 void move(float dt);
 void update(float dt);

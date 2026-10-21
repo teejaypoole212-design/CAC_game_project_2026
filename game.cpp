@@ -3,6 +3,8 @@
 
 #include <cmath>
 
+extern bool in_game;
+
 bool g_sparring_enabled = false;
 sparring_bot g_sparring;
 
@@ -71,13 +73,21 @@ void Game::end_round(Player &player, ai_combat_system &ai, arrow_handler &arrow_
         }
     }
 
-    ai.reset_episode(ai_start);                                             // also restores the AI's hp
+    ai.reset_episode(ai_start);                                        // also restores the AI's hp
+    if (player.get_health() <= 0) {
+        in_game = false;
+    } else {
+    MODEL_PATH = std::format("modelv_{}.pt", current_round);
+    ai.load_model(MODEL_PATH);
+    current_round ++;
     player.take_damage(player.get_health() - player.get_max_health());     // negative damage = refill to max
     player.set_position(player_start);
     player_attacks.clear();                                                 // no stray swings/arrows into the new round
     ai_attacks.clear();
     already_hit.clear();
     if (g_sparring_enabled) g_sparring.begin_episode(player);
+    change_ui_state(game_ui_state::UPGRADE_MENU);
+    }
 }
 
 void Game::spawn_player_attack(std::unique_ptr<base_attack> attack) {
@@ -98,12 +108,12 @@ switch (this->get_game_ui_state()) {
         case game_ui_state::DEATH_MENU: render_end_menu(); break;
     } 
 }
-void Game::update(float dt, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on, std::string& name, Color& color, Shape& shape, int& step) {
+void Game::update(float dt, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on, std::string& name, Color& color, Shape& shape, int& step, std::vector<upgrade> &list) {
 switch (this->get_game_ui_state()) {
         case game_ui_state::START_MENU: update_start_menu(*this); break;
         case game_ui_state::SETUP_MENU: update_setup_menu(name, color, shape, step, *this); break;
         case game_ui_state::IN_GAME:    update_main_game(dt, *this, player, ai, arrow, round_on); break;
-        case game_ui_state::UPGRADE_MENU: update_after_round(); break;
+        case game_ui_state::UPGRADE_MENU: update_after_round(list, *this); break;
         case game_ui_state::DEATH_MENU: /*update_end_menu();*/ break; //there is no update inside end (its ended :) ) 
     }
 }

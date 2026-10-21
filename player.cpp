@@ -70,6 +70,23 @@ void Player::attack_ranged(Game &game, float aim_angle) { //honestly dont need c
 
 }
 
+
+void Player::flash_red(float seconds) {
+    flash_timer = seconds;
+    //std::cout << "this is a test to see if flashing workign :)" << std::endl;
+}
+
+void Player::tick_flash(float dt) {
+    if (flash_timer > 0.0f)
+        flash_timer = std::max(0.0f, flash_timer - dt);
+}
+
+bool Player::is_flashing() const {
+    return flash_timer > 0.0f;
+}
+
+
+
 //checks
 //bool Player::check_collisions() {
 //    return false;
@@ -78,6 +95,8 @@ void Player::attack_ranged(Game &game, float aim_angle) { //honestly dont need c
 
 //misc
 void Player::update(float dt) {
+
+tick_flash(dt);
 last_pos = pos;
 hitbox.set_position(pos);
 this->move(dt); 
@@ -115,6 +134,9 @@ meele_cooldown_current += dt;
 
 void Player::draw()
 {
+
+    Color c = is_flashing() ? RED : color;
+
     if (!this->check_is_alive()) return;
 
     if (shape == Shape::circle) {
@@ -181,4 +203,10 @@ void Player::draw()
     for (auto& arrow : arrows) {
         arrow.draw(pos);
     }
+}
+
+
+void Player::take_damage(int amount) {
+    health -= amount;
+    flash_red(0.5f);
 }

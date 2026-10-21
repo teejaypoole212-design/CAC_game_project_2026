@@ -15,6 +15,7 @@
 #include <fstream>
 #include <memory>
 #include <unordered_set>
+#include <format>
 
 enum class game_ui_state {START_MENU,SETUP_MENU, IN_GAME, UPGRADE_MENU, DEATH_MENU};
 enum class attack_owner { PLAYER, AI };
@@ -22,7 +23,8 @@ enum class attack_owner { PLAYER, AI };
 // main.cpp flips this (Q = fast training). While on, a scripted sparring partner pilots the Player.
 extern bool g_sparring_enabled;
 extern sparring_bot g_sparring;
-
+extern std::string MODEL_PATH; //so i can change the model path
+extern int current_round;
 // Game now only OWNS the shared state (attacks, effects, log, round lifecycle).
 // All per-frame update / render logic lives in render_ui.cpp.
 class Game {
@@ -60,7 +62,7 @@ void draw(Player& player, ai_combat_system& ai, arrow_handler& arrow,
           std::string& name, Color& color, Shape& shape, int& step, std::vector<upgrade> &list);
 
 void update(float dt, Player& player, ai_combat_system& ai, arrow_handler& arrow, bool round_on,
-            std::string& name, Color& color, Shape& shape, int& step);
+            std::string& name, Color& color, Shape& shape, int& step, std::vector<upgrade> &list);
 
 // access for render_ui.cpp
 attack_list& player_attack_list() { return player_attacks; }
